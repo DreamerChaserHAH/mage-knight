@@ -3,6 +3,7 @@ import sys
 
 # Import our modules
 from player import Player
+from controls import Controls
 from background import Background
 from tile import Tile
 from utils import load_level, get_file_path, FILETYPE
@@ -55,6 +56,9 @@ def main():
     pygame.display.set_caption("MAGE-KNIGHT")
     clock = pygame.time.Clock()
 
+        # Initialize controls system
+    controls = Controls()
+
     firefly_particle_system = FireflyParticleSystem(SCREEN_WIDTH, SCREEN_HEIGHT, 10)
 
     # Create background
@@ -64,16 +68,22 @@ def main():
     tiles = load_level(LEVEL_MAP, TILE_SIZE, Tile)
 
     # Create a player at x=50, y=50
-    player = Player(50, 50)
+    player = Player(50, 50, controls)
     
     play_background_music(get_file_path("background.mp3", FILETYPE.AUDIO))
 
     running = True
     while running:
-        # 1. Process events
+    # 1. Process events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_TAB:
+                    controls.toggle_control_scheme()  # Allow toggling controls with Tab key
+        
+        # Update control states
+        controls.update()
         
         # 2. Update game objects
         player.update(tiles)

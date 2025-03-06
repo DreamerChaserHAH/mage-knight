@@ -5,11 +5,10 @@ class Controls:
         # Default control scheme (WASD + Space)
         self.key_bindings = {
             'move_left': pygame.K_a,
-            'move_right': pygame.K_d,
-            'jump': pygame.K_SPACE,
-            'move_up': pygame.K_w,    # For menu navigation or climbing
+            'move_right': pygame.K_d, 
+            'jump': pygame.K_w,      # For jumping
             'move_down': pygame.K_s,  # For menu navigation or crouching
-            'attack': pygame.K_j,     # Add attack action
+            'attack': pygame.K_q,     # Add attack action
             'interact': pygame.K_e,   # Add interact action
             'pause': pygame.K_ESCAPE  # Add pause action
         }
@@ -19,7 +18,6 @@ class Controls:
             'move_left': pygame.K_LEFT,
             'move_right': pygame.K_RIGHT,
             'jump': pygame.K_UP,
-            'move_up': pygame.K_UP,
             'move_down': pygame.K_DOWN,
             'attack': pygame.K_z,
             'interact': pygame.K_x,

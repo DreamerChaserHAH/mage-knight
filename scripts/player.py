@@ -2,9 +2,11 @@ import pygame
 import random
 
 from pygame import Rect
+from controls import Controls
 
 import audioplayer
 from utils import FILETYPE, load_image,get_file_path
+
 
 class Particle:
     def __init__(self, pos):
@@ -46,7 +48,7 @@ class FootStepAudioPlayer:
             self.last_play_time = current_time
 
 class Player:
-    def __init__(self, x, y):
+    def __init__(self, x, y, controls=None):
         # Store initial position as spawn point
         self.spawn_x = x
         self.spawn_y = y
@@ -132,29 +134,58 @@ class Player:
 
         self.footstep_audio_player = FootStepAudioPlayer()
 
+        self.controls = controls
+
     def handle_input(self):
         """Check input using the controls system."""
-
-        keys = pygame.key.get_pressed()
-
+        
         self.vx = 0
         self.current_frames = self.normal_idle_frames
         self.is_moving = False
-        if keys[pygame.K_a]:
-            self.vx = -self.SPEED
-            self.is_facing_right = False
-            self.current_frames = self.normal_moving_frames
-            self.is_moving = True
-        if keys[pygame.K_d]:
-            self.vx = self.SPEED
-            self.is_facing_right = True
-            self.current_frames = self.normal_moving_frames
-            self.is_moving = True
+        
+        if self.controls:
+            # Using controls system
+            if self.controls.is_pressed('move_left'):
+                self.vx = -self.SPEED
+                self.is_facing_right = False
+                self.current_frames = self.normal_moving_frames
+                self.is_moving = True
+                
+            if self.controls.is_pressed('move_right'):
+                self.vx = self.SPEED
+                self.is_facing_right = True
+                self.current_frames = self.normal_moving_frames
+                self.is_moving = True
 
-        # Jump only if on the ground
-        if keys[pygame.K_w] and self.on_ground:
-            self.vy = self.JUMP_SPEED
-            audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+            # Jump only if on the ground
+            if self.controls.is_pressed('jump') and self.on_ground:
+                self.vy = self.JUMP_SPEED
+                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+        else:
+            # Fallback to direct key checking if controls not provided
+            keys = pygame.key.get_pressed()
+
+            if keys[pygame.K_a]:
+                self.vx = -self.SPEED
+                self.is_facing_right = False
+                self.current_frames = self.normal_moving_frames
+                self.is_moving = True
+                
+            if keys[pygame.K_d]:
+                self.vx = self.SPEED
+                self.is_facing_right = True
+                self.current_frames = self.normal_moving_frames
+                self.is_moving = True
+
+            # Jump only if on the ground
+            if keys[pygame.K_w] and self.on_ground:
+                self.vy = self.JUMP_SPEED
+                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+
+            # Jump only if on the ground
+            if keys[pygame.K_w] and self.on_ground:
+                self.vy = self.JUMP_SPEED
+                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
 
     def apply_gravity(self):
         """Apply gravity to vy."""
