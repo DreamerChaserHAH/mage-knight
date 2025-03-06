@@ -3,8 +3,9 @@ import sys
 
 # Import our modules
 from player import Player
+from fx.fog import FogManager
 from controls import Controls
-from background import Background
+from background import Background, draw_overlay
 from tile import Tile
 from utils import load_level, get_file_path, FILETYPE
 from audioplayer import play_background_music
@@ -60,7 +61,7 @@ def main():
     controls = Controls()
 
     firefly_particle_system = FireflyParticleSystem(SCREEN_WIDTH, SCREEN_HEIGHT, 10)
-
+    fog_manager = FogManager(SCREEN_WIDTH, SCREEN_HEIGHT, 20)
     # Create background
     background = Background(SCREEN_WIDTH, SCREEN_HEIGHT)
 
@@ -87,6 +88,7 @@ def main():
         
         # 2. Update game objects
         player.update(tiles)
+        fog_manager.update()
         firefly_particle_system.update()
 
         # 3. Draw everything
@@ -97,6 +99,8 @@ def main():
         for tile in tiles:
             tile.draw(screen)
 
+        fog_manager.draw(screen)
+        draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player.rect)
         # Draw the player
         player.draw(screen)
         firefly_particle_system.draw(screen)

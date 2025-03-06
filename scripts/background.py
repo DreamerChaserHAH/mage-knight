@@ -28,15 +28,29 @@ class Background:
             # Fallback to solid color
             surface.fill(self.bg_color)
 
-        filter = pygame.surface.Surface((self.screen_width, self.screen_height))
-        filter_color = (150, 150, 150, 0)
-        filter.fill(filter_color)
+        #filter = pygame.surface.Surface((self.screen_width, self.screen_height))
+        #filter_color = (150, 150, 150, 0)
+        #filter.fill(filter_color)
         
-        for i in range(20):
-            radius = 150 - i * 5
-            color_value = 75 - i * 3
-            pygame.draw.circle(filter, (color_value, color_value, color_value, 0), (player_rect.centerx, player_rect.centery), radius)
+        #for i in range(20):
+        #    radius = 150 - i * 5
+        #    color_value = 75 - i * 3
+        #    pygame.draw.circle(filter, (color_value, color_value, color_value, 0), (player_rect.centerx, player_rect.centery), radius)
         #for i in range(5):
             #trans = i * 30
             #pygame.draw.circle(filter, (i, i, i, 0), (player_rect.centerx, player_rect.centery), i * 40)
-        surface.blit(filter, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+        #surface.blit(filter, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
+
+def draw_overlay(screen_width, screen_height, surface, player_rect):
+    filter = pygame.surface.Surface((screen_width, screen_height))
+    filter_color = (150, 150, 150, 0)
+    filter.fill(filter_color)
+    
+    for i in range(20):
+        radius = 25 + i * 5
+        color_value = 15 + i * 3
+        pygame.draw.circle(filter, (color_value, color_value, color_value, 0), (player_rect.centerx, player_rect.centery), radius)
+    #for i in range(5):
+        #trans = i * 30
+        #pygame.draw.circle(filter, (i, i, i, 0), (player_rect.centerx, player_rect.centery), i * 40)
+    surface.blit(filter, (0, 0), special_flags=pygame.BLEND_RGB_SUB)
