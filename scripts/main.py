@@ -10,6 +10,7 @@ from tile import Tile
 from utils import load_level, get_file_path, FILETYPE
 from audioplayer import play_background_music
 from fireflies import FireflyParticleSystem
+from camera import Camera  # Add camera import
 
 # --------------------------------------------------------------------------------
 # CONFIG & LEVEL
@@ -57,7 +58,10 @@ def main():
     pygame.display.set_caption("MAGE-KNIGHT")
     clock = pygame.time.Clock()
 
-        # Initialize controls system
+    # Initialize camera
+    camera = Camera(SCREEN_WIDTH, SCREEN_HEIGHT, LEVEL_WIDTH, LEVEL_HEIGHT)
+
+    # Initialize controls system
     controls = Controls()
 
     firefly_particle_system = FireflyParticleSystem(SCREEN_WIDTH, SCREEN_HEIGHT, 10)
@@ -88,6 +92,8 @@ def main():
         
         # 2. Update game objects
         player.update(tiles)
+        # Update camera to follow player
+        camera.update(player)
         fog_manager.update()
         firefly_particle_system.update()
 
@@ -95,14 +101,31 @@ def main():
         # Draw background
         background.draw(screen, player_rect=player.rect)
 
-        # Draw the level tiles
+        # Draw the level tiles with camera offset
         for tile in tiles:
-            tile.draw(screen)
+            # Apply camera offset to each tile
+            tile_rect = camera.apply(tile)
+            screen.blit(tile.image, tile_rect)
 
         fog_manager.draw(screen)
         draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player.rect)
-        # Draw the player
-        player.draw(screen)
+        
+        # Draw the player with camera offset
+        player_rect = camera.apply(player)
+        screen.blit(pygame.transform.flip(player.image, not player.is_facing_right, False), player_rect.topleft)
+        
+        # Draw the sword with camera offset
+        sword_rect = camera.apply(player.sword)
+        screen.blit(pygame.transform.flip(player.sword.image, not player.is_facing_right, False), sword_rect.topleft)
+        
+        # Draw any footstep particles with camera offset
+        for particle in player.footstep_particles:
+            particle.update()
+            # Draw at camera-adjusted position
+            adjusted_x = particle.x - camera.x
+            adjusted_y = particle.y - camera.y
+            pygame.draw.circle(screen, particle.color, (int(adjusted_x), int(adjusted_y)), int(particle.size))
+        
         firefly_particle_system.draw(screen)
 
         pygame.display.flip()
