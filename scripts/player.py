@@ -47,6 +47,63 @@ class FootStepAudioPlayer:
                 self.increase_audio_index()
             self.last_play_time = current_time
 
+class Sword:
+    def __init__(self, x, y, x_offset=0, y_offset=0):
+
+        self.sword_idle = load_image('images/sword/Sword-Idle.png')
+        self.sword_attack = load_image('images/sword/Sword-Attack.png')
+
+        self.x = x
+        self.y = y
+        self.x_offset = x_offset
+        self.y_offset = y_offset
+
+        self.sword_idle_frames = []
+        for i in range(6):
+            frame = self.sword_idle.subsurface(pygame.Rect(i * 16, 0, 16, 16))
+            frame = pygame.transform.scale(frame, (16 * 2, 16 * 2))
+            self.sword_idle_frames.append(frame)
+        
+        self.sword_attack_frames = []
+        for i in range(6):
+            frame = self.sword_attack.subsurface(pygame.Rect(i * 16, 0, 16, 16))
+            frame = pygame.transform.scale(frame, (16 * 2, 16 * 2))
+            self.sword_attack_frames.append(frame)
+        
+
+        self.current_frame = 0
+        self.image = self.sword_idle_frames[self.current_frame]
+
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.is_attacking = False
+
+        self.animation_timer = 0
+        self.animation_interval = 1000 / 15
+        self.last_update_time = 0
+    
+    def update(self, player_rect, is_looking_right):
+        self.rect.center = (player_rect.centerx + (self.x_offset if is_looking_right else -self.x_offset), player_rect.centery + self.y_offset)
+        
+        self.animation_timer += pygame.time.get_ticks() - self.last_update_time
+        self.last_update_time = pygame.time.get_ticks()
+        if self.is_attacking and self.animation_timer >= self.animation_interval:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % len(self.sword_attack_frames)
+            self.image = self.sword_attack_frames[self.current_frame]
+            if self.current_frame == 5:
+                self.is_attacking = False
+                self.image = self.sword_idle_frames[0]
+                self.current_frame = 0
+    
+    def attack(self):
+        if not self.is_attacking:
+            self.is_attacking = True
+            self.current_frame = 0
+            audioplayer.play_audio_clip(get_file_path("sword.wav", FILETYPE.AUDIO), 2)
+
+    def draw(self, surface, is_looking_right):
+        surface.blit(pygame.transform.flip(self.image, not is_looking_right, False), self.rect)
+
 class Player:
     def __init__(self, x, y, controls=None):
         # Store initial position as spawn point
@@ -99,10 +156,9 @@ class Player:
             frame = self.demon_moving.subsurface(pygame.Rect(i * 16, 0, 16, 16))
             frame = pygame.transform.scale(frame, (16 * 4, 16 * 4))
             self.demon_moving_frames.append(frame)
-
+        
         self.current_frame = 0
         self.image = self.normal_idle_frames[self.current_frame]
-        
         # Fallback if loading failed
         if self.image is None:
             self.image = pygame.Surface((32, 32))
@@ -135,6 +191,7 @@ class Player:
         self.footstep_audio_player = FootStepAudioPlayer()
 
         self.controls = controls
+        self.sword = Sword(self.rect.x, self.rect.y, 20, 5)
 
     def handle_input(self):
         """Check input using the controls system."""
@@ -145,6 +202,7 @@ class Player:
         
         if self.controls:
             # Using controls system
+
             if self.controls.is_pressed('move_left'):
                 self.vx = -self.SPEED
                 self.is_facing_right = False
@@ -161,6 +219,9 @@ class Player:
             if self.controls.is_pressed('jump') and self.on_ground:
                 self.vy = self.JUMP_SPEED
                 audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+            
+            if self.controls.is_pressed('attack'):
+                self.sword.attack()
         else:
             # Fallback to direct key checking if controls not provided
             keys = pygame.key.get_pressed()
@@ -270,10 +331,13 @@ class Player:
                 self.footstep_audio_player.play()
                 self.footstep_particles.append(Particle((self.rect.centerx, self.rect.bottom)))
         
+        self.sword.update(self.rect, self.is_facing_right)
+        
 
 
     def draw(self, surface):
         surface.blit(pygame.transform.flip(self.image, not self.is_facing_right, False), self.rect)
+        self.sword.draw(surface, self.is_facing_right)
         for particle in self.footstep_particles:
             particle.update()
             particle.draw(surface)

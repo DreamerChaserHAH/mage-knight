@@ -1,11 +1,11 @@
 import pygame
 
-def play_audio_clip(file_path):
+def play_audio_clip(file_path, channel=1):
     # Load the audio file
     pygame.mixer.music.load(file_path)
     
     # Play the audio file
-    pygame.mixer.Channel(1).play(pygame.mixer.Sound(file_path))
+    pygame.mixer.Channel(channel).play(pygame.mixer.Sound(file_path))
     
 def play_background_music(file_path):
     # Load the audio file
