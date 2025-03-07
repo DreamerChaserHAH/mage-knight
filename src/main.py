@@ -144,6 +144,11 @@ def main():
                 # Start invulnerability period
                 invulnerable_timer = invulnerable_duration
                 
+                # Decrease player health
+                player.health -= 1
+                if player.health <= 0:
+                    player.die()
+                
                 # Optional: Display hit effect or play sound
                 print("Player knocked back by enemy!")
         # ===============================================================================

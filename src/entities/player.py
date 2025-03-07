@@ -190,7 +190,10 @@ class Player:
         self.is_moving = False
         self.current_frames = self.normal_idle_frames
 
-        self.health = 100
+        self.max_health = 5
+        self.health = self.max_health
+        self.is_dead = False
+        self.respawn_timer = 0
 
         self.footstep_audio_player = FootStepAudioPlayer()
 
@@ -304,6 +307,7 @@ class Player:
         if not self.is_dead:
             self.is_dead = True
             self.respawn_timer = 0
+            self.health = 0  # Ensure health is set to 0 upon death
             # You could add sound effects or death animation here
     
     def respawn(self):
@@ -313,33 +317,64 @@ class Player:
         self.vx = 0
         self.vy = 0
         self.is_dead = False
+        self.health = self.max_health  # Reset health upon respawn
         # You could add spawn animation or invulnerability frames here
     
     def update(self, tiles):
             
-        # 1. Handle keyboard input (movement, jump)
-        self.handle_input()
+        if self.is_dead:
+            self.respawn_timer += 1
+            if self.respawn_timer > 60:  # 1 second delay before respawn
+                self.respawn()
+        else:
+            # 1. Handle keyboard input (movement, jump)
+            self.handle_input()
 
-        # 2. Gravity
-        self.apply_gravity()
+            # 2. Gravity
+            self.apply_gravity()
 
-        # 3. Move and collide
-        self.move_and_collide(tiles)
+            # 3. Move and collide
+            self.move_and_collide(tiles)
 
-        # 4. Update animation frame
-        self.animation_timer += pygame.time.get_ticks() - self.last_update_time
-        self.last_update_time = pygame.time.get_ticks()
-        if self.animation_timer >= self.animation_interval:
-            self.animation_timer = 0
-            self.current_frame = (self.current_frame + 1) % len(self.normal_idle_frames)
-            self.image = self.current_frames[self.current_frame]
-            if self.is_moving and self.on_ground:
-                self.footstep_audio_player.play()
-                self.footstep_particles.append(Particle((self.rect.centerx, self.rect.bottom)))
+            # 4. Update animation frame
+            self.animation_timer += pygame.time.get_ticks() - self.last_update_time
+            self.last_update_time = pygame.time.get_ticks()
+            if self.animation_timer >= self.animation_interval:
+                self.animation_timer = 0
+                self.current_frame = (self.current_frame + 1) % len(self.normal_idle_frames)
+                self.image = self.current_frames[self.current_frame]
+                if self.is_moving and self.on_ground:
+                    self.footstep_audio_player.play()
+                    self.footstep_particles.append(Particle((self.rect.centerx, self.rect.bottom)))
+            
+            self.sword.update(self.rect, self.is_facing_right)
         
-        self.sword.update(self.rect, self.is_facing_right)
-        
 
+    def draw_health_bar(self, surface):
+        """Draw the player's health bar."""
+        bar_width = 100
+        bar_height = 10
+        bar_x = 10
+        bar_y = 10
+        border_thickness = 2
+
+        # Draw the border
+        pygame.draw.rect(surface, (0, 0, 0), (bar_x - border_thickness, bar_y - border_thickness, bar_width + 2 * border_thickness, bar_height + 2 * border_thickness))
+
+        # Draw the background
+        pygame.draw.rect(surface, (100, 100, 100), (bar_x, bar_y, bar_width, bar_height))
+
+        # Draw the health bar
+        health_ratio = self.health / self.max_health
+        pygame.draw.rect(surface, (255, 0, 0), (bar_x, bar_y, bar_width, bar_height))
+        pygame.draw.rect(surface, (0, 255, 0), (bar_x, bar_y, bar_width * health_ratio, bar_height))
+
+        # Draw the health text below the health bar
+        font = pygame.font.Font(None, 24)
+        health_text = font.render(f'Health: {self.health}/{self.max_health}', True, (255, 255, 255))
+        text_rect = health_text.get_rect()
+        text_rect.topleft = (bar_x, bar_y + bar_height + 5)
+        surface.blit(health_text, text_rect)
 
     def draw(self, surface):
         render_rect = self.camera.apply(self)
@@ -348,4 +383,5 @@ class Player:
         for particle in self.footstep_particles:
             particle.update()
             particle.draw(surface)
+        self.draw_health_bar(surface)
 
