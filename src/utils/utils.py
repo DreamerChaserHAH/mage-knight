@@ -22,7 +22,7 @@ def load_image(filename, use_alpha=True):
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         filepath = os.path.join(base_dir, '../assets', filename)
-        
+
         if use_alpha:
             return pygame.image.load(filepath).convert_alpha()
         else:
