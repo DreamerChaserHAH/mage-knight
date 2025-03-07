@@ -86,7 +86,6 @@ class Sword:
     
     def update(self, player_rect, is_looking_right):
         self.rect.center = (player_rect.centerx + (self.x_offset if is_looking_right else -self.x_offset), player_rect.centery + self.y_offset)
-        self.camera.apply(self)
 
         self.animation_timer += pygame.time.get_ticks() - self.last_update_time
         self.last_update_time = pygame.time.get_ticks()
@@ -106,7 +105,8 @@ class Sword:
             play_audio_clip(get_file_path("sword.wav", FILETYPE.AUDIO), 2)
 
     def draw(self, surface, is_looking_right):
-        surface.blit(pygame.transform.flip(self.image, not is_looking_right, False), self.rect)
+        render_rect = self.camera.apply(self)
+        surface.blit(pygame.transform.flip(self.image, not is_looking_right, False), render_rect.topleft)
 
 class Player:
     def __init__(self, x, y, controls, camera: Camera):
@@ -326,8 +326,6 @@ class Player:
         # 3. Move and collide
         self.move_and_collide(tiles)
 
-        self.camera.apply(self)
-
         # 4. Update animation frame
         self.animation_timer += pygame.time.get_ticks() - self.last_update_time
         self.last_update_time = pygame.time.get_ticks()
@@ -344,7 +342,8 @@ class Player:
 
 
     def draw(self, surface):
-        surface.blit(pygame.transform.flip(self.image, not self.is_facing_right, False), self.rect)
+        render_rect = self.camera.apply(self)
+        surface.blit(pygame.transform.flip(self.image, not self.is_facing_right, False), render_rect.topleft)
         self.sword.draw(surface, self.is_facing_right)
         for particle in self.footstep_particles:
             particle.update()

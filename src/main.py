@@ -109,7 +109,8 @@ def main():
             screen.blit(tile.image, tile_rect)
 
         fog_manager.draw(screen)
-        draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player.rect)
+        player_render_rect = camera.apply(player)
+        draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player_render_rect)
         
         # Draw the player with camera offset
         #player_rect = camera.apply(player)
