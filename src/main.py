@@ -2,14 +2,15 @@ import pygame
 import sys
 
 # Import our modules
-from player import Player
-from fx.fog import FogManager
-from controls import Controls
-from background import Background, draw_overlay
-from tile import Tile
-from utils import load_level, get_file_path, FILETYPE
-from audioplayer import play_background_music
-from fireflies import FireflyParticleSystem
+
+from entities.player import Player
+from fx.particlesystems.fog import FogManager
+from utils.controls import Controls
+from entities.background import Background, draw_overlay
+from entities.tile import Tile
+from utils.utils import load_level, get_file_path, FILETYPE
+from utils.audioplayer import play_background_music
+from fx.particlesystems.fireflies import FireflyParticleSystem
 from camera import Camera  # Add camera import
 
 # --------------------------------------------------------------------------------
@@ -73,7 +74,7 @@ def main():
     tiles = load_level(LEVEL_MAP, TILE_SIZE, Tile)
 
     # Create a player at x=50, y=50
-    player = Player(50, 50, controls)
+    player = Player(50, 50, controls, camera)
     
     play_background_music(get_file_path("background.mp3", FILETYPE.AUDIO))
 
@@ -111,12 +112,12 @@ def main():
         draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player.rect)
         
         # Draw the player with camera offset
-        player_rect = camera.apply(player)
-        screen.blit(pygame.transform.flip(player.image, not player.is_facing_right, False), player_rect.topleft)
-        
+        #player_rect = camera.apply(player)
+        #screen.blit(pygame.transform.flip(player.image, not player.is_facing_right, False), player_rect.topleft)
+        player.draw(screen)
         # Draw the sword with camera offset
-        sword_rect = camera.apply(player.sword)
-        screen.blit(pygame.transform.flip(player.sword.image, not player.is_facing_right, False), sword_rect.topleft)
+        #sword_rect = camera.apply(player.sword)
+        #screen.blit(pygame.transform.flip(player.sword.image, not player.is_facing_right, False), sword_rect.topleft)
         
         # Draw any footstep particles with camera offset
         for particle in player.footstep_particles:

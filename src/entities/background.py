@@ -1,5 +1,5 @@
 import pygame
-from utils import load_image
+from utils.utils import load_image
 
 class Background:
     def __init__(self, screen_width, screen_height):

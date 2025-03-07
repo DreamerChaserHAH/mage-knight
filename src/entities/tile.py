@@ -1,5 +1,5 @@
 import pygame
-from utils import load_image
+from utils.utils import load_image
 
 class Tile:
     def __init__(self, x, y, width, height):

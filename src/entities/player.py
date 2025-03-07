@@ -2,11 +2,12 @@ import pygame
 import random
 
 from pygame import Rect
-from controls import Controls
+from utils.controls import Controls
 
-import audioplayer
-from utils import FILETYPE, load_image,get_file_path
+from utils.audioplayer import play_audio_clip
+from utils.utils import FILETYPE, load_image,get_file_path
 
+from camera import Camera
 
 class Particle:
     def __init__(self, pos):
@@ -39,7 +40,7 @@ class FootStepAudioPlayer:
     def play(self):
         current_time = pygame.time.get_ticks()
         if current_time - self.last_play_time > self.play_interval:
-            audioplayer.play_audio_clip(get_file_path('footsteps/footstep-'+self.playing_side+str(self.current_audio_index)+'.ogg', FILETYPE.AUDIO))
+            play_audio_clip(get_file_path('footsteps/footstep-'+self.playing_side+str(self.current_audio_index)+'.ogg', FILETYPE.AUDIO))
             if self.playing_side == "l":
                 self.playing_side = "r"
             else:
@@ -48,7 +49,7 @@ class FootStepAudioPlayer:
             self.last_play_time = current_time
 
 class Sword:
-    def __init__(self, x, y, x_offset=0, y_offset=0):
+    def __init__(self, x, y, x_offset, y_offset, camera: Camera):
 
         self.sword_idle = load_image('images/sword/Sword-Idle.png')
         self.sword_attack = load_image('images/sword/Sword-Attack.png')
@@ -80,10 +81,13 @@ class Sword:
         self.animation_timer = 0
         self.animation_interval = 1000 / 15
         self.last_update_time = 0
+
+        self.camera = camera
     
     def update(self, player_rect, is_looking_right):
         self.rect.center = (player_rect.centerx + (self.x_offset if is_looking_right else -self.x_offset), player_rect.centery + self.y_offset)
-        
+        self.camera.apply(self)
+
         self.animation_timer += pygame.time.get_ticks() - self.last_update_time
         self.last_update_time = pygame.time.get_ticks()
         if self.is_attacking and self.animation_timer >= self.animation_interval:
@@ -99,13 +103,13 @@ class Sword:
         if not self.is_attacking:
             self.is_attacking = True
             self.current_frame = 0
-            audioplayer.play_audio_clip(get_file_path("sword.wav", FILETYPE.AUDIO), 2)
+            play_audio_clip(get_file_path("sword.wav", FILETYPE.AUDIO), 2)
 
     def draw(self, surface, is_looking_right):
         surface.blit(pygame.transform.flip(self.image, not is_looking_right, False), self.rect)
 
 class Player:
-    def __init__(self, x, y, controls=None):
+    def __init__(self, x, y, controls, camera: Camera):
         # Store initial position as spawn point
         self.spawn_x = x
         self.spawn_y = y
@@ -191,7 +195,9 @@ class Player:
         self.footstep_audio_player = FootStepAudioPlayer()
 
         self.controls = controls
-        self.sword = Sword(self.rect.x, self.rect.y, 20, 5)
+        self.camera = camera
+
+        self.sword = Sword(self.rect.x, self.rect.y, 20, 5, camera)
 
     def handle_input(self):
         """Check input using the controls system."""
@@ -218,7 +224,7 @@ class Player:
             # Jump only if on the ground
             if self.controls.is_pressed('jump') and self.on_ground:
                 self.vy = self.JUMP_SPEED
-                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+                play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
             
             if self.controls.is_pressed('attack'):
                 self.sword.attack()
@@ -241,12 +247,12 @@ class Player:
             # Jump only if on the ground
             if keys[pygame.K_w] and self.on_ground:
                 self.vy = self.JUMP_SPEED
-                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+                play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
 
             # Jump only if on the ground
             if keys[pygame.K_w] and self.on_ground:
                 self.vy = self.JUMP_SPEED
-                audioplayer.play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
+                play_audio_clip(get_file_path('jump.wav', FILETYPE.AUDIO))
 
     def apply_gravity(self):
         """Apply gravity to vy."""
@@ -319,6 +325,8 @@ class Player:
 
         # 3. Move and collide
         self.move_and_collide(tiles)
+
+        self.camera.apply(self)
 
         # 4. Update animation frame
         self.animation_timer += pygame.time.get_ticks() - self.last_update_time

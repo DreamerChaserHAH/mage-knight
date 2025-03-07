@@ -9,10 +9,10 @@ class FILETYPE(Enum):
 def get_file_path(filename, type: FILETYPE):
     if type == FILETYPE.IMAGE:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_dir, 'assets', filename)
+        return os.path.join(base_dir, '../assets', filename)
     elif type == FILETYPE.AUDIO:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        return os.path.join(base_dir, 'assets/audio', filename)
+        return os.path.join(base_dir, '../assets/audio', filename)
 
 def load_image(filename, use_alpha=True):
     """
@@ -21,7 +21,7 @@ def load_image(filename, use_alpha=True):
     """
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        filepath = os.path.join(base_dir, 'assets', filename)
+        filepath = os.path.join(base_dir, '../assets', filename)
         
         if use_alpha:
             return pygame.image.load(filepath).convert_alpha()
