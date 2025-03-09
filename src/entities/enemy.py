@@ -77,13 +77,22 @@ class Enemy:
         
         # Set initial image
         self.image = self.walking_frames[self.current_frame]
+        
+        # ======================= ADDED DEBUG PROPERTY =======================
+        # For debugging collision issues
+        self.debug_info = {
+            "last_collision": None,
+            "on_platform": False,
+        }
+        # ===============================================================================
     
-    def update(self, tiles):
+    def update(self, tiles, player=None):
         """
         Update enemy position, animation, and handle collisions
         
         Args:
             tiles (list): List of Tile objects to check for collisions
+            player (Player): Player object to check for proximity
         """
         # Apply gravity
         if not self.on_ground:
@@ -94,23 +103,30 @@ class Enemy:
         
         # Move horizontally
         self.rect.x += self.vx
+        
+        # ======================= IMPROVED HORIZONTAL COLLISION HANDLING =======================
         # Check horizontal collisions
+        horizontal_collision = False
         for tile in tiles:
             if self.rect.colliderect(tile.rect):
+                horizontal_collision = True
                 if self.vx > 0:  # moving right
                     self.rect.right = tile.rect.left
                     self.direction = -1
-                    # Fix: When reversing direction, update facing direction to match
                     self.is_facing_right = False
                 elif self.vx < 0:  # moving left
                     self.rect.left = tile.rect.right
                     self.direction = 1
-                    # Fix: When reversing direction, update facing direction to match
                     self.is_facing_right = True
+                
+                self.debug_info["last_collision"] = "horizontal"
+        # ===============================================================================
         
         # Move vertically
         self.rect.y += self.vy
         self.on_ground = False
+        
+        # ======================= IMPROVED VERTICAL COLLISION HANDLING =======================
         # Check vertical collisions
         for tile in tiles:
             if self.rect.colliderect(tile.rect):
@@ -118,18 +134,41 @@ class Enemy:
                     self.rect.bottom = tile.rect.top
                     self.vy = 0
                     self.on_ground = True
+                    self.debug_info["on_platform"] = True
+                    self.debug_info["last_collision"] = "vertical_bottom"
                 elif self.vy < 0:  # moving up
                     self.rect.top = tile.rect.bottom
                     self.vy = 0
+                    self.debug_info["last_collision"] = "vertical_top"
+        # ===============================================================================
+        
+        # ======================= IMPROVED PLATFORM EDGE DETECTION =======================
+        # Check if we're about to walk off a platform edge
+        if self.on_ground and not horizontal_collision:
+            # Look ahead to see if there's ground beneath the enemy's next step
+            look_ahead_dist = 10  # pixels to look ahead
+            check_x = self.rect.x + (look_ahead_dist * self.direction)
+            check_rect = pygame.Rect(check_x, self.rect.bottom, self.rect.width, 5)  # 5 pixels down
+            
+            has_ground_ahead = False
+            for tile in tiles:
+                if check_rect.colliderect(tile.rect):
+                    has_ground_ahead = True
+                    break
+            
+            # If there's no ground ahead, turn around
+            if not has_ground_ahead:
+                self.direction *= -1
+                self.is_facing_right = not self.is_facing_right
+                # print(f"Enemy detected edge at ({self.rect.x}, {self.rect.y}), turning around")
+        # ===============================================================================
         
         # Check if enemy has reached patrol distance limit
         if self.rect.x > self.spawn_x + self.patrol_distance:
             self.direction = -1
-            # Fix: When reversing direction, update facing direction to match
             self.is_facing_right = False
         elif self.rect.x < self.spawn_x - self.patrol_distance:
             self.direction = 1
-            # Fix: When reversing direction, update facing direction to match
             self.is_facing_right = True
         
         # Only animate if on the ground (walking)
@@ -140,6 +179,15 @@ class Enemy:
                 self.animation_timer = 0
                 self.current_frame = (self.current_frame + 1) % len(self.walking_frames)
                 self.image = self.walking_frames[self.current_frame]
+        
+        # ======================= IMPROVED BOUNDARY CHECK =======================
+        # Check if enemy has fallen too far (below screen)
+        if self.rect.y > 2000:  # Arbitrary large value
+            print(f"Enemy at ({self.rect.x}, {self.rect.y}) fell out of bounds")
+            return False  # Signal that this enemy should be removed
+            
+        return True  # Enemy is still valid
+        # ===============================================================================
     
     def check_player_collision(self, player):
         """

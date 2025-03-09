@@ -33,10 +33,10 @@ SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
 
-# ======================= IMPROVED MAP CONFIGURATION =======================
+# ======================= FIXED MAP CONFIGURATION =======================
 # A much wider level map with specific entity markers
 # S = Player spawn point
-# E = Enemy spawn point
+# E = Enemy spawn point (now placed properly on platforms)
 # X = Death zone (causes player to die on contact)
 # # = Platform/solid tile
 LEVEL_MAP = [
@@ -46,12 +46,12 @@ LEVEL_MAP = [
     "......................................................................................",
     "..............####.......#######............................####......................",
     ".......S..............................................................................",
-    "......####....########################.........E..............................E.....",
+    "......####....########################...............................................",
     "......................................................................................",
     "..............#####...........................................####....................",
     "......................................................................................",
     "#####..............................####...............................................",
-    "######.............E.............####...............................................",
+    "######....E.....................####.........................E.....................E.",
     "#######################....#####################........##########################",
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
 ]
@@ -97,13 +97,32 @@ def main():
         # Default spawn position if no 'S' marker in map
         player = Player(50, 50, controls, camera)
     
+    # ======================= FIXED ENEMY CREATION AND POSITIONING =======================
     # Create enemies at spawn positions with varying patrol distances
     enemies = []
     patrol_distances = [150, 200, 250]  # Different patrol distances for variety
     
+    # Calculate proper Y offset to ensure enemies are properly placed on the platforms
+    enemy_height = 64  # Default enemy height
+    enemy_y_offset = -enemy_height  # Place enemies so their feet touch the platform
+    
     for i, spawn in enumerate(enemy_spawns):
         patrol = patrol_distances[i % len(patrol_distances)]  # Cycle through patrol distances
-        enemies.append(Enemy(spawn[0], spawn[1], patrol_distance=patrol))
+        # Position the enemy on top of the platform by offsetting y position
+        enemies.append(Enemy(spawn[0], spawn[1] + enemy_y_offset, patrol_distance=patrol))
+        print(f"Created enemy at ({spawn[0]}, {spawn[1] + enemy_y_offset})")
+    # ===============================================================================
+    
+    # ======================= IMPROVED ENEMY RESPAWN TRACKING =======================
+    # Store initial enemy positions and properties for respawning
+    enemy_spawns_info = []
+    for i, spawn in enumerate(enemy_spawns):
+        patrol = patrol_distances[i % len(patrol_distances)]
+        enemy_spawns_info.append({
+            'x': spawn[0],
+            'y': spawn[1] + enemy_y_offset,  # Using the adjusted Y position
+            'patrol': patrol
+        })
     # ===============================================================================
     
     play_background_music(get_file_path("background.mp3", FILETYPE.AUDIO))
@@ -132,18 +151,64 @@ def main():
         # Update camera to follow player
         camera.update(player)
         
-        # ======================= FIXED DEATH ZONE COLLISION DETECTION =======================
+        # ======================= IMPROVED DEATH ZONE COLLISION DETECTION =======================
         # Check if player is in a death zone
         player_rect = player.rect
+        player_died = False
+        
         for death_zone in death_zones:
-            # Now death_zone is already a pygame.Rect so we can use it directly
-            if player_rect.colliderect(death_zone):
+            # Check if player's feet touch the death zone
+            # This is more lenient and makes more sense for platformers
+            feet_rect = pygame.Rect(
+                player_rect.x + player_rect.width * 0.25,
+                player_rect.y + player_rect.height * 0.8,
+                player_rect.width * 0.5,  # Only check the center 50% of the player width
+                player_rect.height * 0.2   # Only check the bottom 20% of the player height
+            )
+            
+            if feet_rect.colliderect(death_zone):
                 player.health = 0
-                # Reset player to spawn position
-                if player_spawn:
-                    player.rect.x = player_spawn[0]
-                    player.rect.y = player_spawn[1]
+                player_died = True
                 print("Player hit a death zone!")
+                break  # Exit loop once death is detected
+                
+        # Check if enemies are in death zones and remove them if they are
+        for enemy in enemies[:]:  # Create a copy of the list for safe removal
+            for death_zone in death_zones:
+                # Create a feet rect for the enemy similar to the player
+                enemy_feet_rect = pygame.Rect(
+                    enemy.rect.x + enemy.rect.width * 0.25,
+                    enemy.rect.y + enemy.rect.height * 0.8,
+                    enemy.rect.width * 0.5,
+                    enemy.rect.height * 0.2
+                )
+                
+                if enemy_feet_rect.colliderect(death_zone):
+                    enemies.remove(enemy)
+                    print(f"Enemy fell into death zone at ({enemy.rect.x}, {enemy.rect.y})")
+                    break  # Exit inner loop once this enemy is removed
+        # ===============================================================================
+        
+        # Reset player and enemies if player died
+        if player_died:
+            # Reset player to spawn position
+            if player_spawn:
+                player.rect.x = player_spawn[0]
+                player.rect.y = player_spawn[1]
+            
+            # Reset player velocity
+            player.vx = 0
+            player.vy = 0
+            
+            # Respawn all enemies to their original positions
+            enemies = []
+            for spawn_info in enemy_spawns_info:
+                enemies.append(Enemy(
+                    spawn_info['x'],
+                    spawn_info['y'],
+                    patrol_distance=spawn_info['patrol']
+                ))
+            print("Respawned all enemies!")
         # ===============================================================================
         
         # ======================= KNOCKBACK IMPLEMENTATION - UPDATED COLLISION =======================
