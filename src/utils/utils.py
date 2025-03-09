@@ -32,6 +32,52 @@ def load_image(filename, use_alpha=True):
         return None
 
 
+# ======================= FIXED MAP GENERATION LOGIC =======================
+def parse_map(level_map, tile_size, tile_class):
+    """
+    Parse the level map and create corresponding game objects.
+    
+    Args:
+        level_map (list): List of strings representing the level layout
+        tile_size (int): Size of each tile in pixels
+        tile_class (class): Class to use for creating tile objects
+    
+    Returns:
+        tuple: (tiles, player_spawn, enemy_spawns, death_zones)
+            - tiles: List of Tile objects
+            - player_spawn: (x, y) position where player should spawn
+            - enemy_spawns: List of (x, y) positions where enemies should spawn
+            - death_zones: List of pygame.Rect objects representing death zones
+    """
+    tiles = []
+    player_spawn = None
+    enemy_spawns = []
+    death_zones = []
+    
+    # Process each character in the map
+    for row_index, row in enumerate(level_map):
+        for col_index, cell in enumerate(row):
+            # Calculate position
+            x = col_index * tile_size
+            y = row_index * tile_size
+            
+            # Process different tile types
+            if cell == '#':
+                # Regular platforms - pass both width and height as tile_size
+                tiles.append(tile_class(x, y, tile_size, tile_size))
+            elif cell == 'X':
+                # Death zones
+                death_zones.append(pygame.Rect(x, y, tile_size, tile_size))
+            elif cell == 'S':
+                # Player spawn point
+                player_spawn = (x, y)
+            elif cell == 'E':
+                # Enemy spawn point
+                enemy_spawns.append((x, y))
+    
+    return tiles, player_spawn, enemy_spawns, death_zones
+# ===============================================================================
+
 def load_level(level_data, tile_size, tile_class):
     """
     Given a list of strings, return a list of Tile objects for solid tiles.

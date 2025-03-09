@@ -7,7 +7,9 @@ from fx.particlesystems.fog import FogManager
 from utils.controls import Controls
 from entities.background import Background, draw_overlay
 from entities.tile import Tile
-from utils.utils import load_level, get_file_path, FILETYPE
+# ======================= IMPROVED MAP GENERATION IMPORT =======================
+from utils.utils import parse_map, get_file_path, FILETYPE
+# ===============================================================================
 from utils.audioplayer import play_background_music
 from fx.particlesystems.fireflies import FireflyParticleSystem
 from camera import Camera  # Add camera import
@@ -31,8 +33,12 @@ SCREEN_WIDTH = 640
 SCREEN_HEIGHT = 480
 TILE_SIZE = 32
 
-# A much wider level map to enable continuous movement
-# This level is wider than the screen, so we need a camera to follow the player
+# ======================= IMPROVED MAP CONFIGURATION =======================
+# A much wider level map with specific entity markers
+# S = Player spawn point
+# E = Enemy spawn point
+# X = Death zone (causes player to die on contact)
+# # = Platform/solid tile
 LEVEL_MAP = [
     "......................................................................................",
     "......................................................................................",
@@ -40,15 +46,16 @@ LEVEL_MAP = [
     "......................................................................................",
     "..............####.......#######............................####......................",
     ".......S..............................................................................",
-    "......####....#########################.............................................",
+    "......####....########################.........E..............................E.....",
     "......................................................................................",
     "..............#####...........................................####....................",
     "......................................................................................",
     "#####..............................####...............................................",
-    "######............................####...............................................",
+    "######.............E.............####...............................................",
     "#######################....#####################........##########################",
     "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
 ]
+# ===============================================================================
 
 # Calculate level dimensions based on the map
 LEVEL_WIDTH = len(LEVEL_MAP[0]) * TILE_SIZE
@@ -79,23 +86,24 @@ def main():
     # Create background
     background = Background(SCREEN_WIDTH, SCREEN_HEIGHT)
 
-    # Load level geometry (list of Tile objects)
-    tiles = load_level(LEVEL_MAP, TILE_SIZE, Tile)
+    # ======================= IMPROVED MAP LOADING =======================
+    # Parse level map to get tiles, spawn positions, and death zones
+    tiles, player_spawn, enemy_spawns, death_zones = parse_map(LEVEL_MAP, TILE_SIZE, Tile)
 
-    # Create a player at x=50, y=50
-    player = Player(50, 50, controls, camera)
+    # Create player at spawn position or default position if no spawn point defined
+    if player_spawn:
+        player = Player(player_spawn[0], player_spawn[1], controls, camera)
+    else:
+        # Default spawn position if no 'S' marker in map
+        player = Player(50, 50, controls, camera)
     
-    # ======================= ENEMY IMPLEMENTATION - UPDATED POSITIONS =======================
-    # Create enemies at positions that match ground level
-    # Find appropriate y-position for the ground level tiles
-    # These values need to be adjusted based on your specific map layout
-    ground_y = 12 * TILE_SIZE - 64  # 12th row (indexed from 0) minus enemy height
+    # Create enemies at spawn positions with varying patrol distances
+    enemies = []
+    patrol_distances = [150, 200, 250]  # Different patrol distances for variety
     
-    enemies = [
-        Enemy(300, ground_y, patrol_distance=150),  # First enemy
-        Enemy(600, ground_y, patrol_distance=200),  # Second enemy
-        Enemy(900, ground_y, patrol_distance=100)   # Third enemy
-    ]
+    for i, spawn in enumerate(enemy_spawns):
+        patrol = patrol_distances[i % len(patrol_distances)]  # Cycle through patrol distances
+        enemies.append(Enemy(spawn[0], spawn[1], patrol_distance=patrol))
     # ===============================================================================
     
     play_background_music(get_file_path("background.mp3", FILETYPE.AUDIO))
@@ -108,7 +116,7 @@ def main():
 
     running = True
     while running:
-    # 1. Process events
+        # 1. Process events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -123,6 +131,20 @@ def main():
         player.update(tiles)
         # Update camera to follow player
         camera.update(player)
+        
+        # ======================= FIXED DEATH ZONE COLLISION DETECTION =======================
+        # Check if player is in a death zone
+        player_rect = player.rect
+        for death_zone in death_zones:
+            # Now death_zone is already a pygame.Rect so we can use it directly
+            if player_rect.colliderect(death_zone):
+                player.health = 0
+                # Reset player to spawn position
+                if player_spawn:
+                    player.rect.x = player_spawn[0]
+                    player.rect.y = player_spawn[1]
+                print("Player hit a death zone!")
+        # ===============================================================================
         
         # ======================= KNOCKBACK IMPLEMENTATION - UPDATED COLLISION =======================
         # Update invulnerability timer
@@ -206,6 +228,19 @@ def main():
         
         firefly_particle_system.draw(screen)
 
+        # ======================= FIXED DEATH ZONE VISUALIZATION (DEBUG ONLY) =======================
+        # Uncomment to visualize death zones during debugging
+        # for death_zone in death_zones:
+        #     # Apply camera offset
+        #     adjusted_rect = pygame.Rect(
+        #         death_zone.x - camera.x, 
+        #         death_zone.y - camera.y,
+        #         death_zone.width, 
+        #         death_zone.height
+        #     )
+        #     pygame.draw.rect(screen, (255, 0, 0), adjusted_rect, 1)
+        # ===============================================================================
+        
         pygame.display.flip()
         clock.tick(60)
     
