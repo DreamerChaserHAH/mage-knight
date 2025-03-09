@@ -49,6 +49,10 @@ class MapEditor:
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("Mage Knight Map Editor")
         
+        # Calculate visible dimensions
+        self.visible_width = self.screen_width // self.tile_size
+        self.visible_height = self.screen_height // self.tile_size
+        
         # Tile types and their colors
         self.tile_types = {
             '.': (0, 0, 0),       # Empty space (black)
@@ -91,15 +95,12 @@ class MapEditor:
         self.screen.fill((30, 30, 30))  # Dark gray background
         
         # Draw the visible portion of the map
-        visible_width = self.screen_width // self.tile_size
-        visible_height = self.screen_height // self.tile_size
-        
-        for y in range(visible_height):
+        for y in range(self.visible_height):
             map_y = y + self.camera_y
             if map_y >= self.map_height:
                 continue
                 
-            for x in range(visible_width):
+            for x in range(self.visible_width):
                 map_x = x + self.camera_x
                 if map_x >= self.map_width:
                     continue
@@ -154,11 +155,11 @@ class MapEditor:
                     elif event.key == pygame.K_LEFT:
                         self.camera_x = max(0, self.camera_x - 1)
                     elif event.key == pygame.K_RIGHT:
-                        self.camera_x = min(self.map_width - visible_width, self.camera_x + 1)
+                        self.camera_x = min(self.map_width - self.visible_width, self.camera_x + 1)
                     elif event.key == pygame.K_UP:
                         self.camera_y = max(0, self.camera_y - 1)
                     elif event.key == pygame.K_DOWN:
-                        self.camera_y = min(self.map_height - visible_height, self.camera_y + 1)
+                        self.camera_y = min(self.map_height - self.visible_height, self.camera_y + 1)
                     
                     # Save/Load
                     elif event.key == pygame.K_s:
