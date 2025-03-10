@@ -10,7 +10,6 @@ from entities.background import Background, draw_overlay
 from entities.tile import Tile
 # ======================= IMPROVED MAP GENERATION IMPORT =======================
 from utils.utils import parse_map, get_file_path, FILETYPE
-# ===============================================================================
 from utils.audioplayer import play_background_music
 from fx.particlesystems.fireflies import FireflyParticleSystem
 from camera import Camera  # Add camera import
@@ -23,6 +22,11 @@ import entities.player_extension  # This adds the apply_knockback method to Play
 # ======================= ENEMY IMPLEMENTATION - FIXED IMPORT =======================
 # Correct import path for Enemy class
 from entities.enemy import Enemy  # Import from entities package without src prefix
+# ===============================================================================
+
+# ======================= HIT EFFECT IMPLEMENTATION - NEW IMPORT =======================
+# Import the HitEffect class
+from fx.hiteffect import HitEffect
 # ===============================================================================
 
 # ======================= ASSET VALIDATION IMPORTS =======================
@@ -130,12 +134,18 @@ def main():
         })
     # ===============================================================================
     
+    # Load and play background music
     play_background_music(get_file_path("background.mp3", FILETYPE.AUDIO))
 
     # ======================= KNOCKBACK IMPLEMENTATION - NEW VARIABLE =======================
     # Variable to track player invulnerability after being hit
     invulnerable_timer = 0
     invulnerable_duration = 60  # Frames of invulnerability after being hit (1 second at 60 FPS)
+    # ===============================================================================
+
+    # ======================= HIT EFFECT IMPLEMENTATION - NEW VARIABLE =======================
+    # List to store active hit effects
+    hit_effects = []
     # ===============================================================================
 
     running = True
@@ -247,11 +257,39 @@ def main():
                 damage = 2 if enemy.state == "attacking" else 1
                 player.health -= damage
                 
+                # ======================= HIT EFFECT IMPLEMENTATION - CREATE EFFECT =======================
+                # Create hit effect at the point of collision
+                hit_x = (player.rect.centerx + enemy.rect.centerx) / 2
+                hit_y = (player.rect.centery + enemy.rect.centery) / 2
+                
+                # Different colors based on attack strength
+                hit_color = (255, 50, 50) if enemy.state == "attacking" else (255, 100, 100)
+                
+                # Add new hit effect
+                hit_effects.append(HitEffect(hit_x, hit_y, hit_color))
+                
+                # Try to play hit sound if the function exists
+                try:
+                    from utils.audioplayer import play_hit_sound
+                    play_hit_sound()
+                except (ImportError, AttributeError):
+                    # Fallback if hit sound function isn't available
+                    pass
+                # ===============================================================================
+                
                 if player.health <= 0:
                     player.die()
                 
                 # Optional: Display hit effect or play sound
                 print(f"Player knocked back by enemy! Damage: {damage}")
+        # ===============================================================================
+        
+        # ======================= HIT EFFECT IMPLEMENTATION - UPDATE EFFECTS =======================
+        # Update and remove finished hit effects
+        for effect in hit_effects[:]:
+            effect.update()
+            if effect.is_finished():
+                hit_effects.remove(effect)
         # ===============================================================================
         
         fog_manager.update()
@@ -277,10 +315,6 @@ def main():
         player_render_rect = camera.apply(player)
         draw_overlay(SCREEN_WIDTH, SCREEN_HEIGHT, screen, player_rect=player_render_rect)
         
-        # Draw the player with camera offset
-        #player_rect = camera.apply(player)
-        #screen.blit(pygame.transform.flip(player.image, not player.is_facing_right, False), player_rect.topleft)
-        
         # ======================= KNOCKBACK IMPLEMENTATION - VISUAL INDICATOR =======================
         # Optional: Flash the player sprite when invulnerable
         visible = True
@@ -293,10 +327,6 @@ def main():
             player.draw(screen)
         # ===============================================================================
         
-        # Draw the sword with camera offset
-        #sword_rect = camera.apply(player.sword)
-        #screen.blit(pygame.transform.flip(player.sword.image, not player.is_facing_right, False), sword_rect.topleft)
-        
         # Draw any footstep particles with camera offset
         for particle in player.footstep_particles:
             particle.update()
@@ -304,6 +334,12 @@ def main():
             adjusted_x = particle.x - camera.x
             adjusted_y = particle.y - camera.y
             pygame.draw.circle(screen, particle.color, (int(adjusted_x), int(adjusted_y)), int(particle.size))
+        
+        # ======================= HIT EFFECT IMPLEMENTATION - DRAW EFFECTS =======================
+        # Draw all active hit effects
+        for effect in hit_effects:
+            effect.draw(screen, camera)
+        # ===============================================================================
         
         firefly_particle_system.draw(screen)
 
