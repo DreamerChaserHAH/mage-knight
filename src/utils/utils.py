@@ -14,6 +14,7 @@ def get_file_path(filename, type: FILETYPE):
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         return os.path.join(base_dir, '../assets/audio', filename)
 
+# ======================= IMPROVED IMAGE LOADING =======================
 def load_image(filename, use_alpha=True):
     """
     Helper function to load images with proper error handling.
@@ -22,6 +23,18 @@ def load_image(filename, use_alpha=True):
     try:
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         filepath = os.path.join(base_dir, '../assets', filename)
+        
+        # Debug output to help identify path issues
+        # print(f"Attempting to load image from: {filepath}")
+        # print(f"File exists: {os.path.exists(filepath)}")
+        
+        if not os.path.exists(filepath):
+            print(f"WARNING: Image file not found: {filepath}")
+            # Check if we need to create the directory for development
+            assets_dir = os.path.join(base_dir, '../assets/images/Enemy/Enemy0')
+            if not os.path.exists(assets_dir):
+                print(f"Note: Assets directory structure does not exist: {assets_dir}")
+            return None
 
         if use_alpha:
             return pygame.image.load(filepath).convert_alpha()
@@ -30,7 +43,7 @@ def load_image(filename, use_alpha=True):
     except (pygame.error, FileNotFoundError) as e:
         print(f"Could not load image {filename}: {e}")
         return None
-
+# ===============================================================================
 
 # ======================= FIXED MAP GENERATION LOGIC =======================
 def parse_map(level_map, tile_size, tile_class):

@@ -4,14 +4,13 @@ import sys
 import os
 
 # Fix imports to work correctly within the project structure
-# When running directly vs when imported from main.py
 if __name__ == "__main__":
-    # When run directly, we need to add parent directories to path
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
     from utils.utils import load_image, get_file_path, FILETYPE
 else:
-    # When imported from main.py, use relative imports
     from utils.utils import load_image, get_file_path, FILETYPE
+
+from utils.animationplayer import AnimationPlayer
 
 class Enemy:
     """
@@ -20,53 +19,16 @@ class Enemy:
     or reach the end of their patrol path.
     """
     def __init__(self, x, y, width=64, height=64, patrol_distance=200):
-        """
-        Initialize a new enemy
-        
-        Args:
-            x (int): Starting x-coordinate
-            y (int): Starting y-coordinate
-            width (int): Enemy width in pixels
-            height (int): Enemy height in pixels
-            patrol_distance (int): Maximum distance the enemy will move from its spawn point
-        """
+        """Initialize a new enemy"""
         # Position and dimensions
         self.rect = pygame.Rect(x, y, width, height)
         self.spawn_x = x
         self.spawn_y = y
         
-        # Load enemy walking animation
-        self.walking_image = load_image('images/Enemy/Enemy0/enemy0_walking.png')
-        
-        if self.walking_image is None:
-            # Fallback if image loading fails
-            self.walking_image = pygame.Surface((width, height))
-            self.walking_image.fill((255, 0, 0))  # Red color for enemy
-        
-        # Create animation frames from spritesheet
-        self.walking_frames = []
-        # Using the frame dimensions from the JSON file
-        frame_width = 72
-        frame_height = 88
-        
-        for i in range(2):  # Two frames based on the JSON
-            frame = self.walking_image.subsurface(pygame.Rect(i * frame_width, 0, frame_width, frame_height))
-            # Scale to desired size
-            frame = pygame.transform.scale(frame, (width, height))
-            self.walking_frames.append(frame)
-        
-        # Animation variables
-        self.current_frame = 0
-        self.animation_speed = 0.1
-        self.animation_timer = 0
-        
         # Movement variables
         self.direction = 1  # 1 for right, -1 for left
         self.speed = 1
         self.patrol_distance = patrol_distance
-        # Fix: Initial facing should match the initial movement direction
-        # If direction is 1 (moving right), is_facing_right should be True
-        # If direction is -1 (moving left), is_facing_right should be False
         self.is_facing_right = self.direction > 0
         
         # Physics variables
@@ -75,37 +37,84 @@ class Enemy:
         self.gravity = 0.5
         self.on_ground = False
         
-        # Set initial image
-        self.image = self.walking_frames[self.current_frame]
-        
-        # ======================= ADDED DEBUG PROPERTY =======================
-        # For debugging collision issues
+        # Debug property
         self.debug_info = {
             "last_collision": None,
             "on_platform": False,
         }
+        
+        # ======================= ANIMATION SETUP - COMPLETELY NEW =======================
+        # Create animation player - the ONLY animation system we'll use
+        self.animation_player = AnimationPlayer()
+        
+        # Load walking animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Enemy/Enemy0/enemy0_walking.png",
+            json_path="images/Enemy/Enemy0/enemy0_walking.json",
+            animation_name="walking"
+        )
+        
+        # Load attack animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Enemy/Enemy0/enemy0_attacking.png",
+            json_path="images/Enemy/Enemy0/enemy0_attacking.json",
+            animation_name="attack"
+        )
+        
+        # Set scale to match desired dimensions
+        self.animation_player.set_scale(width / 72, height / 88)
+        
+        # Set initial animation
+        self.animation_player.play("walking")
+        
+        # State and attack properties
+        self.state = "walking"  # Can be "walking" or "attacking"
+        self.detection_range = 200  # Range to detect the player (in pixels)
+        self.attack_speed = 3  # Speed multiplier during attack
+        self.attack_duration = 45  # Frames that the attack lasts
+        self.attack_cooldown = 0  # Frames until next attack is allowed
+        self.cooldown_duration = 60  # Frames between attacks
+        self.attack_timer = 0  # Current frame in attack sequence
         # ===============================================================================
     
     def update(self, tiles, player=None):
-        """
-        Update enemy position, animation, and handle collisions
+        """Update enemy position, animation, and handle collisions"""
+        # Player detection and state management
+        if player and self.state != "attacking" and self.attack_cooldown <= 0:
+            dx = player.rect.centerx - self.rect.centerx
+            dy = player.rect.centery - self.rect.centery
+            distance = (dx**2 + dy**2)**0.5
+            
+            if distance <= self.detection_range:
+                self.state = "attacking"
+                self.attack_timer = self.attack_duration
+                self.is_facing_right = dx > 0
+                self.direction = 1 if self.is_facing_right else -1
+                print(f"Enemy detected player at distance {distance:.1f}, initiating attack!")
         
-        Args:
-            tiles (list): List of Tile objects to check for collisions
-            player (Player): Player object to check for proximity
-        """
+        # Handle attack cooldown
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
+            
         # Apply gravity
         if not self.on_ground:
             self.vy += self.gravity
+            
+        # Set velocity based on state
+        if self.state == "attacking":
+            self.vx = self.speed * self.direction * self.attack_speed
+            self.attack_timer -= 1
+            
+            # Return to walking when attack finishes
+            if self.attack_timer <= 0:
+                self.state = "walking"
+                self.attack_cooldown = self.cooldown_duration
+                print("Attack finished, returning to patrol")
+        else:
+            self.vx = self.speed * self.direction
         
-        # Set horizontal velocity based on direction
-        self.vx = self.speed * self.direction
-        
-        # Move horizontally
+        # Move horizontally and handle collisions
         self.rect.x += self.vx
-        
-        # ======================= IMPROVED HORIZONTAL COLLISION HANDLING =======================
-        # Check horizontal collisions
         horizontal_collision = False
         for tile in tiles:
             if self.rect.colliderect(tile.rect):
@@ -118,16 +127,11 @@ class Enemy:
                     self.rect.left = tile.rect.right
                     self.direction = 1
                     self.is_facing_right = True
-                
                 self.debug_info["last_collision"] = "horizontal"
-        # ===============================================================================
         
-        # Move vertically
+        # Move vertically and handle collisions
         self.rect.y += self.vy
         self.on_ground = False
-        
-        # ======================= IMPROVED VERTICAL COLLISION HANDLING =======================
-        # Check vertical collisions
         for tile in tiles:
             if self.rect.colliderect(tile.rect):
                 if self.vy > 0:  # falling down
@@ -140,15 +144,12 @@ class Enemy:
                     self.rect.top = tile.rect.bottom
                     self.vy = 0
                     self.debug_info["last_collision"] = "vertical_top"
-        # ===============================================================================
         
-        # ======================= IMPROVED PLATFORM EDGE DETECTION =======================
-        # Check if we're about to walk off a platform edge
+        # Check for platform edges
         if self.on_ground and not horizontal_collision:
-            # Look ahead to see if there's ground beneath the enemy's next step
-            look_ahead_dist = 10  # pixels to look ahead
+            look_ahead_dist = 10
             check_x = self.rect.x + (look_ahead_dist * self.direction)
-            check_rect = pygame.Rect(check_x, self.rect.bottom, self.rect.width, 5)  # 5 pixels down
+            check_rect = pygame.Rect(check_x, self.rect.bottom, self.rect.width, 5)
             
             has_ground_ahead = False
             for tile in tiles:
@@ -156,14 +157,11 @@ class Enemy:
                     has_ground_ahead = True
                     break
             
-            # If there's no ground ahead, turn around
             if not has_ground_ahead:
                 self.direction *= -1
                 self.is_facing_right = not self.is_facing_right
-                # print(f"Enemy detected edge at ({self.rect.x}, {self.rect.y}), turning around")
-        # ===============================================================================
         
-        # Check if enemy has reached patrol distance limit
+        # Check patrol distance limits
         if self.rect.x > self.spawn_x + self.patrol_distance:
             self.direction = -1
             self.is_facing_right = False
@@ -171,57 +169,37 @@ class Enemy:
             self.direction = 1
             self.is_facing_right = True
         
-        # Only animate if on the ground (walking)
-        if self.on_ground:
-            # Update animation frame
-            self.animation_timer += 1
-            if self.animation_timer >= 10:  # Adjust timing as needed
-                self.animation_timer = 0
-                self.current_frame = (self.current_frame + 1) % len(self.walking_frames)
-                self.image = self.walking_frames[self.current_frame]
+        # ======================= UPDATE ANIMATION STATE BASED ON ENEMY STATE =======================
+        # Choose animation based on state
+        if self.state == "attacking":
+            self.animation_player.play("attack")
+        else:
+            self.animation_player.play("walking")
         
-        # ======================= IMPROVED BOUNDARY CHECK =======================
-        # Check if enemy has fallen too far (below screen)
-        if self.rect.y > 2000:  # Arbitrary large value
+        # Update flip direction for animation
+        self.animation_player.set_flip(flip_x=self.is_facing_right)
+        
+        # Update animation player
+        self.animation_player.update()
+        # ===============================================================================
+        
+        # Check for out of bounds
+        if self.rect.y > 2000:
             print(f"Enemy at ({self.rect.x}, {self.rect.y}) fell out of bounds")
             return False  # Signal that this enemy should be removed
             
         return True  # Enemy is still valid
-        # ===============================================================================
     
     def check_player_collision(self, player):
-        """
-        Check if enemy collides with player
-        
-        Args:
-            player (Player): The player object to check collision against
-            
-        Returns:
-            bool: True if collision occurred, False otherwise
-        """
-        if self.rect.colliderect(player.rect):
-            # Enemy has collided with player
-            return True
-        return False
+        """Check if enemy collides with player"""
+        return self.rect.colliderect(player.rect)
     
     def draw(self, surface, camera):
-        """
-        Draw the enemy with camera offset
-        
-        Args:
-            surface (pygame.Surface): The surface to draw on
-            camera (Camera): The camera object for position adjustments
-        """
+        """Draw the enemy with camera offset"""
         # Get camera-adjusted position
         enemy_rect = camera.apply(self)
         
-        # Fix: Correctly flip the sprite based on movement direction
-        # If enemy is facing right, don't flip; if facing left, flip horizontally
-        # The issue might be that the sprites are already facing the correct way,
-        # so we may need to adjust this logic
-        
-        # Try this first - invert the flip logic
-        surface.blit(pygame.transform.flip(self.image, self.is_facing_right, False), enemy_rect.topleft)
-        
-        # If that doesn't work, try this alternative:
-        # surface.blit(pygame.transform.flip(self.image, not self.is_facing_right, False), enemy_rect.topleft)
+        # ======================= DRAW ONLY USING ANIMATION PLAYER =======================
+        # This is the ONLY drawing code - no direct surface blits or old animation code
+        self.animation_player.draw(surface, enemy_rect.topleft)
+        # ===============================================================================

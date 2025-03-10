@@ -1,5 +1,6 @@
 import pygame
 import sys
+import os
 
 # Fix import to use relative imports within the same package
 from entities.player import Player
@@ -22,6 +23,10 @@ import entities.player_extension  # This adds the apply_knockback method to Play
 # ======================= ENEMY IMPLEMENTATION - FIXED IMPORT =======================
 # Correct import path for Enemy class
 from entities.enemy import Enemy  # Import from entities package without src prefix
+# ===============================================================================
+
+# ======================= ASSET VALIDATION IMPORTS =======================
+from utils.utils import get_file_path, FILETYPE
 # ===============================================================================
 
 # --------------------------------------------------------------------------------
@@ -216,28 +221,37 @@ def main():
         if invulnerable_timer > 0:
             invulnerable_timer -= 1
         
-        # Update all enemies
-        for enemy in enemies:
-            enemy.update(tiles)
-            
+        # ======================= UPDATED ENEMY PROCESSING =======================
+        # Update all enemies and pass the player parameter for detection
+        for enemy in enemies[:]:  # Use copy to allow safe removal
+            # Update returns False if enemy should be removed (fell out of bounds)
+            if not enemy.update(tiles, player):
+                enemies.remove(enemy)
+                
             # Check for player-enemy collision only if player is not invulnerable
             if invulnerable_timer <= 0 and enemy.check_player_collision(player):
                 # Calculate knockback direction (away from enemy)
                 knockback_dir = 1 if player.rect.centerx > enemy.rect.centerx else -1
                 
+                # Apply stronger knockback if enemy is attacking
+                knockback_force = 15 if enemy.state == "attacking" else 10
+                vertical_force = -10 if enemy.state == "attacking" else -8
+                
                 # Apply knockback to player
-                player.apply_knockback(knockback_dir, 10, -8)  # Parameters: direction, horizontal force, vertical force
+                player.apply_knockback(knockback_dir, knockback_force, vertical_force)
                 
                 # Start invulnerability period
                 invulnerable_timer = invulnerable_duration
                 
-                # Decrease player health
-                player.health -= 1
+                # Decrease player health (more damage if enemy is charging)
+                damage = 2 if enemy.state == "attacking" else 1
+                player.health -= damage
+                
                 if player.health <= 0:
                     player.die()
                 
                 # Optional: Display hit effect or play sound
-                print("Player knocked back by enemy!")
+                print(f"Player knocked back by enemy! Damage: {damage}")
         # ===============================================================================
         
         fog_manager.update()

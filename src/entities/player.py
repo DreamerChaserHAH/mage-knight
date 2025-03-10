@@ -8,6 +8,7 @@ from utils.audioplayer import play_audio_clip
 from utils.utils import FILETYPE, load_image,get_file_path
 
 from camera import Camera
+from utils.animationplayer import AnimationPlayer
 
 class Particle:
     def __init__(self, pos):
@@ -201,6 +202,46 @@ class Player:
         self.camera = camera
 
         self.sword = Sword(self.rect.x, self.rect.y, 20, 5, camera)
+
+        self.initialize_animations()
+
+    def initialize_animations(self):
+        """Initialize all player animations using the AnimationPlayer"""
+        self.animation_player = AnimationPlayer()
+        
+        # Load idle animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Player/player_idle.png",
+            json_path="images/Player/player_idle.json",
+            animation_name="idle"
+        )
+        
+        # Load walking animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Player/player_walking.png",
+            json_path="images/Player/player_walking.json",
+            animation_name="walking"
+        )
+        
+        # Load jump animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Player/player_jump.png",
+            json_path="images/Player/player_jump.json",
+            animation_name="jump"
+        )
+        
+        # Load attack animation
+        self.animation_player.load_aseprite_animation(
+            image_path="images/Player/player_attack.png",
+            json_path="images/Player/player_attack.json",
+            animation_name="attack"
+        )
+        
+        # Set default animation
+        self.animation_player.play("idle")
+        
+        # Set scale to match player dimensions
+        self.animation_player.set_scale(self.rect.width / 64, self.rect.height / 64)
 
     def handle_input(self):
         """Check input using the controls system."""
