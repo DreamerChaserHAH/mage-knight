@@ -283,7 +283,7 @@ class AnimationPlayer:
         Args:
             animation_name (str): Name of the animation to play
             force_restart (bool, optional): Whether to restart the animation if it's already playing. 
-                                          Defaults to False.
+            Defaults to False.
                 
         Returns:
             bool: True if the animation started playing, False otherwise
@@ -355,7 +355,7 @@ class AnimationPlayer:
             surface (pygame.Surface): Surface to draw on
             position (tuple): (x, y) position to draw at
             frame_time (int, optional): Override the internal time tracking with a specific time. 
-                                      Defaults to None.
+            Defaults to None.
                 
         Returns:
             bool: True if successfully drawn, False otherwise
